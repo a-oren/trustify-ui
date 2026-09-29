@@ -1,10 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
+import { Button } from "@patternfly/react-core";
 import { Table, Tbody, Td, Th, Thead, Tr } from "@patternfly/react-table";
 
-import type { IconedStatusPreset } from "@app/components/IconedStatus";
-import { IconedStatus } from "@app/components/IconedStatus";
+import { PolicyLabel } from "@app/components/PolicyLabel";
 import { SimplePagination } from "@app/components/SimplePagination";
 import {
   ConditionalTableBody,
@@ -17,65 +17,52 @@ import { CryptoSearchContext } from "./crypto-context";
 
 interface CryptoTableProps {
   assetType: string;
+  onSelectAlgorithm: (item: CryptoAlgorithm) => void;
 }
 
-/** Maps a backend policy_status string to an IconedStatus preset name. */
-const policyPresetMap: Record<string, IconedStatusPreset> = {
-  Compliant: "Compliant",
-  Warning: "Warning",
-  NonCompliant: "NonCompliant",
-};
+const algProps = (item: CryptoAlgorithm) =>
+  ((item.properties as Record<string, unknown>)?.algorithmProperties as Record<
+    string,
+    unknown
+  >) ?? {};
 
-/** Extracts the primitive value from the nested algorithm properties. */
-const getPrimitive = (item: CryptoAlgorithm): string => {
-  const props = item.properties as Record<string, unknown>;
-  const algProps = props?.algorithmProperties as
-    Record<string, unknown> | undefined;
-  return (algProps?.primitive as string) ?? "--";
-};
+const rcmProps = (item: CryptoAlgorithm) =>
+  ((item.properties as Record<string, unknown>)
+    ?.relatedCryptoMaterialProperties as Record<string, unknown>) ?? {};
 
-/** Extracts the type value from the nested related crypto material properties. */
-const getKeyType = (item: CryptoAlgorithm): string => {
-  const props = item.properties as Record<string, unknown>;
-  const matProps = props?.relatedCryptoMaterialProperties as
-    Record<string, unknown> | undefined;
-  return (matProps?.type as string) ?? item.asset_type ?? "--";
-};
+/** Extracts the primitive value from algorithm properties. */
+const getPrimitive = (item: CryptoAlgorithm): string =>
+  (algProps(item).primitive as string) ?? "--";
 
-/** Extracts the recommendation from algorithm properties, or returns "--" for compliant items. */
-const getRecommendation = (item: CryptoAlgorithm): string => {
-  const props = item.properties as Record<string, unknown>;
-  const algProps = props?.algorithmProperties as
-    Record<string, unknown> | undefined;
-  return (algProps?.recommendation as string) ?? "--";
-};
+/** Extracts the type value from related crypto material properties. */
+const getKeyType = (item: CryptoAlgorithm): string =>
+  (rcmProps(item).type as string) ?? item.asset_type ?? "--";
+
+/** Extracts the recommendation from algorithm properties. */
+const getRecommendation = (item: CryptoAlgorithm): string =>
+  (algProps(item).recommendation as string) ?? "--";
 
 /** Extracts the usage context from crypto properties. */
-const getUsage = (item: CryptoAlgorithm): string => {
-  const props = item.properties as Record<string, unknown>;
-  return (props?.detectionContext as string) ?? "--";
-};
+const getUsage = (item: CryptoAlgorithm): string =>
+  (algProps(item).detectionContext as string) ?? "--";
 
 /** Extracts the occurrence count from crypto properties. */
-const getOccurrences = (item: CryptoAlgorithm): number => {
-  const props = item.properties as Record<string, unknown>;
-  return (props?.occurrences as number) ?? 1;
-};
+const getOccurrences = (item: CryptoAlgorithm): number =>
+  (algProps(item).occurrences as number) ?? 1;
 
 /** Extracts the packages count from crypto properties. */
-const getPackagesCount = (item: CryptoAlgorithm): number => {
-  const props = item.properties as Record<string, unknown>;
-  return (props?.packages as number) ?? 0;
-};
+const getPackagesCount = (item: CryptoAlgorithm): number =>
+  (algProps(item).packages as number) ?? 0;
 
 /** Extracts the SBOMs count from crypto properties. */
-const getSbomsCount = (item: CryptoAlgorithm): number => {
-  const props = item.properties as Record<string, unknown>;
-  return (props?.sboms as number) ?? 0;
-};
+const getSbomsCount = (item: CryptoAlgorithm): number =>
+  (algProps(item).sboms as number) ?? 0;
 
 /** Master algorithm/key table component with tab-aware column rendering. */
-export const CryptoTable: React.FC<CryptoTableProps> = ({ assetType }) => {
+export const CryptoTable: React.FC<CryptoTableProps> = ({
+  assetType,
+  onSelectAlgorithm,
+}) => {
   const { isFetching, fetchError, tableControls } =
     React.useContext(CryptoSearchContext);
 
@@ -140,7 +127,13 @@ export const CryptoTable: React.FC<CryptoTableProps> = ({ assetType }) => {
                     modifier="breakWord"
                     {...getTdProps({ columnKey: "name", item, rowIndex })}
                   >
-                    {item.name}
+                    <Button
+                      variant="link"
+                      isInline
+                      onClick={() => onSelectAlgorithm(item)}
+                    >
+                      {item.name}
+                    </Button>
                   </Td>
                   {isAlgorithms ? (
                     <>
@@ -172,11 +165,7 @@ export const CryptoTable: React.FC<CryptoTableProps> = ({ assetType }) => {
                           rowIndex,
                         })}
                       >
-                        <IconedStatus
-                          preset={
-                            policyPresetMap[item.policy_status] ?? "Unknown"
-                          }
-                        />
+                        <PolicyLabel policyStatus={item.policy_status} />
                       </Td>
                       <Td
                         width={15}
